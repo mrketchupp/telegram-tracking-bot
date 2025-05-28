@@ -1,0 +1,6 @@
+name = "telegram-tracking-bot"
+main = "bot.js"
+compatibility_date = "2025-05-28"
+
+[vars]
+# Las variables se configuran desde el dashboard
