@@ -180,13 +180,36 @@ Espera un momento...`, env);
   }
 }
 
-// Consultar API de 17Track
+// Consultar API de 17Track - CON REGISTRO AUTOMÁTICO
 async function getTrackingInfo(trackingNumber, env) {
-  const apiUrl = 'https://api.17track.net/track/v2.2/gettrackinfo';
+  const registerUrl = 'https://api.17track.net/track/v2.2/register';
+  const trackUrl = 'https://api.17track.net/track/v2.2/gettrackinfo';
   
   try {
-    // Primer intento: autodetección de carrier
-    let response = await fetch(apiUrl, {
+    console.log(`Registrando número: ${trackingNumber}`);
+    
+    // PASO 1: REGISTRAR el número de guía primero
+    const registerResponse = await fetch(registerUrl, {
+      method: 'POST',
+      headers: {
+        '17token': env.TRACK17_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify([{
+        "number": trackingNumber
+      }])
+    });
+    
+    const registerData = await registerResponse.json();
+    console.log('Respuesta registro 17Track:', JSON.stringify(registerData, null, 2));
+    
+    // Esperar un momento para que el sistema procese el registro
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // PASO 2: CONSULTAR la información
+    console.log(`Consultando información del número registrado: ${trackingNumber}`);
+    
+    let response = await fetch(trackUrl, {
       method: 'POST',
       headers: {
         '17token': env.TRACK17_API_KEY,
@@ -202,20 +225,42 @@ async function getTrackingInfo(trackingNumber, env) {
     }
     
     const data = await response.json();
-    console.log('Respuesta 17Track:', JSON.stringify(data, null, 2));
+    console.log('Respuesta consulta 17Track:', JSON.stringify(data, null, 2));
     
     // Verificar si hay datos aceptados
     if (data.code === 0 && data.data?.accepted?.length > 0) {
       return formatTrackingResponse(trackingNumber, data.data.accepted[0]);
     }
     
-    // Si autodetección falla, probar con códigos específicos
+    // Si autodetección falla, probar con códigos específicos Y registro
     const carrierCodes = [2, 7041, 100842]; // DHL Express, DHL Paket, DHL Supply Chain
     
     for (const carrierCode of carrierCodes) {
-      console.log(`Probando carrier code: ${carrierCode}`);
+      console.log(`Registrando con carrier code: ${carrierCode}`);
       
-      response = await fetch(apiUrl, {
+      // Registrar con carrier específico
+      const carrierRegisterResponse = await fetch(registerUrl, {
+        method: 'POST',
+        headers: {
+          '17token': env.TRACK17_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([{
+          "number": trackingNumber,
+          "carrier": carrierCode
+        }])
+      });
+      
+      const carrierRegisterData = await carrierRegisterResponse.json();
+      console.log(`Registro carrier ${carrierCode}:`, JSON.stringify(carrierRegisterData, null, 2));
+      
+      // Esperar antes de consultar
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Consultar con carrier específico
+      console.log(`Consultando con carrier code: ${carrierCode}`);
+      
+      response = await fetch(trackUrl, {
         method: 'POST',
         headers: {
           '17token': env.TRACK17_API_KEY,
@@ -229,6 +274,7 @@ async function getTrackingInfo(trackingNumber, env) {
       
       if (response.ok) {
         const carrierData = await response.json();
+        console.log(`Consulta carrier ${carrierCode}:`, JSON.stringify(carrierData, null, 2));
         
         if (carrierData.code === 0 && carrierData.data?.accepted?.length > 0) {
           return formatTrackingResponse(trackingNumber, carrierData.data.accepted[0]);
@@ -236,18 +282,15 @@ async function getTrackingInfo(trackingNumber, env) {
       }
     }
     
-    // Si ningún carrier funciona
+    // Si ningún método funciona
     return {
-      message: `📦 <b>No se encontró información</b>
+      message: `📦 <b>Número registrado pero sin información disponible</b>
 
 🔍 Número de guía: <code>${trackingNumber}</code>
 
-Posibles causas:
-• El número puede estar incorrecto
-• El paquete aún no está en el sistema
-• La paquetería no está soportada
+El número fue registrado exitosamente en el sistema, pero puede necesitar más tiempo para mostrar información de seguimiento.
 
-💡 Verifica el número e intenta nuevamente en unos minutos.`
+💡 Intenta nuevamente en 5-10 minutos.`
     };
     
   } catch (error) {
