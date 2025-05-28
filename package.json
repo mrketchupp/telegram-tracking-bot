@@ -2,9 +2,9 @@
   "name": "telegram-tracking-bot",
   "version": "1.0.0",
   "description": "A Telegram bot for tracking",
-  "main": "bot.js",
+  "main": "worker.js",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node worker.js"
   },
   "keywords": [
     "telegram",
