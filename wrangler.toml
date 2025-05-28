@@ -14,4 +14,4 @@ account_id = "27605d911c4a97568ad247a74f1e1d7e"
 # Configuración de routing
 [[routes]]
 pattern = "tracking-bot.mrketchupp.com"
-custom_domain = true:
+custom_domain = true
