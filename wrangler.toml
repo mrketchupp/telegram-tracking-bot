@@ -15,3 +15,8 @@ account_id = "27605d911c4a97568ad247a74f1e1d7e"
 [[routes]]
 pattern = "tracking-bot.mrketchupp.com"
 custom_domain = true
+
+# wrangler.toml (wrangler v3.88.0^)
+[observability.logs]
+enabled = true
+
