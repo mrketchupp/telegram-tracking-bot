@@ -379,4 +379,4 @@ async function sendMessage(chatId, text, env) {
     console.error('Error en sendMessage:', error);
     throw error;
   }
-}}
+}
