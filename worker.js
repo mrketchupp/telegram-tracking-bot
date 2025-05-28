@@ -1,4 +1,5 @@
-// bot.js - Telegram Tracking Bot para Cloudflare Workers
+// worker.js - Telegram Tracking Bot para Cloudflare Workers
+// Versión Final con HTML formatting
 // Fecha: 28 de mayo 2025
 
 export default {
@@ -37,6 +38,10 @@ export default {
 // Configurar webhook de Telegram
 async function setupWebhook(request, env) {
   try {
+    if (!env.TELEGRAM_BOT_TOKEN) {
+      return new Response('❌ Error: TELEGRAM_BOT_TOKEN no está configurado', { status: 500 });
+    }
+    
     const webhookUrl = `${new URL(request.url).origin}/webhook`;
     const telegramApiUrl = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/setWebhook`;
     
@@ -55,18 +60,24 @@ async function setupWebhook(request, env) {
     const result = await response.json();
     
     if (result.ok) {
-      return new Response(`✅ Webhook configurado exitosamente!\n\nURL: ${webhookUrl}\nStatus: ${result.description}`, {
+      return new Response(`✅ Webhook configurado exitosamente!
+
+🔗 URL: ${webhookUrl}
+📊 Estado: ${result.description}
+🤖 Bot: Activo y listo
+
+🎯 Prueba enviando /start en Telegram`, {
         headers: { 'Content-Type': 'text/plain; charset=utf-8' }
       });
     } else {
-      return new Response(`❌ Error configurando webhook: ${result.description}`, {
+      return new Response(`❌ Error: ${result.description}`, {
         status: 400,
         headers: { 'Content-Type': 'text/plain; charset=utf-8' }
       });
     }
   } catch (error) {
-    console.error('Error configurando webhook:', error);
-    return new Response(`Error: ${error.message}`, { status: 500 });
+    console.error('Error en setupWebhook:', error);
+    return new Response(`⚠️ Error: ${error.message}`, { status: 500 });
   }
 }
 
@@ -107,16 +118,16 @@ async function handleTelegramUpdate(update, env, ctx) {
 async function handleStartCommand(chatId, userName, env) {
   const welcomeMessage = `👋 ¡Hola ${userName}!
 
-🚚 **Bot de Tracking de Paquetes**
+🚚 <b>Bot de Tracking de Paquetes</b>
 
 Puedo ayudarte a rastrear tus paquetes de DHL y otras paqueterías.
 
-**Comandos disponibles:**
-/track NUMERO_GUIA - Rastrear un paquete
-/help - Mostrar esta ayuda
+<b>Comandos disponibles:</b>
+• /track NUMERO_GUIA - Rastrear un paquete
+• /help - Mostrar ayuda
 
-**Ejemplo:**
-\`/track 5532417763\`
+<b>Ejemplo:</b>
+<code>/track 5532417763</code>
 
 ¡Envíame un número de guía para comenzar! 📦`;
 
@@ -125,24 +136,24 @@ Puedo ayudarte a rastrear tus paquetes de DHL y otras paqueterías.
 
 // Comando /help
 async function handleHelpCommand(chatId, env) {
-  const helpMessage = `🆘 **Ayuda - Bot de Tracking**
+  const helpMessage = `🆘 <b>Ayuda - Bot de Tracking</b>
 
-**Comandos:**
-• \`/start\` - Iniciar el bot
-• \`/track NUMERO\` - Rastrear paquete
-• \`/help\` - Mostrar esta ayuda
+<b>Comandos:</b>
+• <code>/start</code> - Iniciar el bot
+• <code>/track NUMERO</code> - Rastrear paquete
+• <code>/help</code> - Mostrar esta ayuda
 
-**Formas de rastrear:**
-• \`/track 5532417763\`
-• Enviar solo el número: \`5532417763\`
+<b>Formas de rastrear:</b>
+• <code>/track 5532417763</code>
+• Enviar solo el número: <code>5532417763</code>
 
-**Paqueterías soportadas:**
+<b>Paqueterías soportadas:</b>
 • DHL Express
 • FedEx
 • UPS
 • Y muchas más...
 
-💡 **Tip:** Solo envía el número de guía y yo me encargo del resto.`;
+💡 <b>Tip:</b> Solo envía el número de guía y yo me encargo del resto.`;
 
   await sendMessage(chatId, helpMessage, env);
 }
@@ -156,7 +167,9 @@ async function handleTrackCommand(chatId, trackingNumber, env) {
   }
   
   // Enviar mensaje de "buscando..."
-  await sendMessage(chatId, `🔍 Buscando información del paquete: \`${trackingNumber}\`\n\nEspera un momento...`, env);
+  await sendMessage(chatId, `🔍 Buscando información del paquete: <code>${trackingNumber}</code>
+
+Espera un momento...`, env);
   
   try {
     const trackingInfo = await getTrackingInfo(trackingNumber, env);
@@ -225,9 +238,9 @@ async function getTrackingInfo(trackingNumber, env) {
     
     // Si ningún carrier funciona
     return {
-      message: `📦 **No se encontró información**
+      message: `📦 <b>No se encontró información</b>
 
-🔍 Número de guía: \`${trackingNumber}\`
+🔍 Número de guía: <code>${trackingNumber}</code>
 
 Posibles causas:
 • El número puede estar incorrecto
@@ -250,9 +263,9 @@ function formatTrackingResponse(trackingNumber, trackData) {
     
     if (!track || !track.z0 || track.z0.length === 0) {
       return {
-        message: `📦 **Paquete encontrado pero sin eventos**
+        message: `📦 <b>Paquete encontrado pero sin eventos</b>
 
-🔍 Número: \`${trackingNumber}\`
+🔍 Número: <code>${trackingNumber}</code>
 ⚠️ No hay información de seguimiento disponible aún.
 
 Intenta nuevamente más tarde.`
@@ -265,34 +278,34 @@ Intenta nuevamente más tarde.`
     // Formatear fecha
     const eventDate = lastEvent.a ? formatDate(lastEvent.a) : 'Fecha no disponible';
     
-    const message = `📦 **Información del Paquete**
+    const message = `📦 <b>Información del Paquete</b>
 
-🏢 **Paquetería:** ${carrierName}
-🔍 **Guía:** \`${trackingNumber}\`
+🏢 <b>Paquetería:</b> ${carrierName}
+🔍 <b>Guía:</b> <code>${trackingNumber}</code>
 
-📍 **Estado actual:** ${lastEvent.z || 'En proceso'}
-🌍 **Ubicación:** ${lastEvent.c || 'En tránsito'}
-📅 **Fecha:** ${eventDate}
+📍 <b>Estado actual:</b> ${lastEvent.z || 'En proceso'}
+🌍 <b>Ubicación:</b> ${lastEvent.c || 'En tránsito'}
+📅 <b>Fecha:</b> ${eventDate}
 
-${lastEvent.d ? `📝 **Detalles:** ${lastEvent.d}` : ''}
+${lastEvent.d ? `📝 <b>Detalles:</b> ${lastEvent.d}` : ''}
 
-⏰ *Consultado: ${new Date().toLocaleString('es-MX', { 
+⏰ <i>Consultado: ${new Date().toLocaleString('es-MX', { 
   timeZone: 'America/Mexico_City',
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
   hour: '2-digit',
   minute: '2-digit'
-})}*`;
+})}</i>`;
 
     return { message };
     
   } catch (error) {
     console.error('Error formateando respuesta:', error);
     return {
-      message: `📦 **Información básica**
+      message: `📦 <b>Información básica</b>
 
-🔍 Número: \`${trackingNumber}\`
+🔍 Número: <code>${trackingNumber}</code>
 ✅ Paquete encontrado en el sistema
 ⚠️ Error procesando detalles completos
 
@@ -337,7 +350,7 @@ function formatDate(dateString) {
   }
 }
 
-// Enviar mensaje a Telegram
+// Enviar mensaje a Telegram - CORREGIDO PARA HTML
 async function sendMessage(chatId, text, env) {
   const telegramApiUrl = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
   
@@ -350,7 +363,7 @@ async function sendMessage(chatId, text, env) {
       body: JSON.stringify({
         chat_id: chatId,
         text: text,
-        parse_mode: 'Markdown',
+        parse_mode: 'HTML',  // ← CAMBIADO DE MARKDOWN A HTML
         disable_web_page_preview: true
       })
     });
@@ -366,4 +379,4 @@ async function sendMessage(chatId, text, env) {
     console.error('Error en sendMessage:', error);
     throw error;
   }
-}
+}}
