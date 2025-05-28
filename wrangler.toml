@@ -1,6 +1,17 @@
 name = "telegram-tracking-bot"
-main = "bot.js"
+main = "worker.js"
 compatibility_date = "2025-05-28"
 
+# Tu account ID de Cloudflare
+account_id = "27605d911c4a97568ad247a74f1e1d7e"
+
+# Variables de entorno (se configuran desde el dashboard)
 [vars]
-# Las variables se configuran desde el dashboard
+# Estas son solo referencias, los valores reales se configuran en Cloudflare
+# TELEGRAM_BOT_TOKEN = "configurar en dashboard"
+# TRACK17_API_KEY = "configurar en dashboard"
+
+# Configuración de routing
+[[routes]]
+pattern = "tracking-bot.mrketchupp.com"
+custom_domain = true:
