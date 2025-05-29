@@ -1,6 +1,6 @@
 // worker.js - Telegram Tracking Bot para Cloudflare Workers
-// Versión Final con HTML formatting
-// Fecha: 28 de mayo 2025
+// Versión Final con API v2.2 de 17Track y registro automático
+// Fecha: 29 de mayo 2025
 
 export default {
   async fetch(request, env, ctx) {
@@ -299,47 +299,105 @@ El número fue registrado exitosamente en el sistema, pero puede necesitar más 
   }
 }
 
-// Formatear respuesta de tracking
+// Formatear respuesta de tracking - ACTUALIZADA PARA API v2.2
 function formatTrackingResponse(trackingNumber, trackData) {
   try {
-    const track = trackData.track;
+    console.log('Formateando datos de tracking:', JSON.stringify(trackData, null, 2));
     
-    if (!track || !track.z0 || track.z0.length === 0) {
+    // Nueva estructura de la API v2.2
+    const trackInfo = trackData.track_info;
+    
+    if (!trackInfo) {
+      return {
+        message: `📦 <b>Paquete encontrado pero sin información</b>
+
+🔍 Número: <code>${trackingNumber}</code>
+⚠️ No hay información de tracking disponible.
+
+Intenta nuevamente más tarde.`
+      };
+    }
+    
+    // Obtener información básica
+    const latestStatus = trackInfo.latest_status;
+    const latestEvent = trackInfo.latest_event;
+    const timeMetrics = trackInfo.time_metrics;
+    const provider = trackInfo.tracking?.providers?.[0]?.provider;
+    const events = trackInfo.tracking?.providers?.[0]?.events || [];
+    
+    console.log('Eventos encontrados:', events.length);
+    
+    if (events.length === 0) {
       return {
         message: `📦 <b>Paquete encontrado pero sin eventos</b>
 
-🔍 Número: <code>${trackingNumber}</code>
+🔍 Número: <code>${trackingNumber}</code>  
 ⚠️ No hay información de seguimiento disponible aún.
 
 Intenta nuevamente más tarde.`
       };
     }
     
-    const lastEvent = track.z0[0]; // Evento más reciente
-    const carrierName = getCarrierName(trackData.carrier);
+    // Información del proveedor
+    const carrierName = provider?.name || 'Paquetería detectada';
+    const carrierPhone = provider?.tel || '';
     
-    // Formatear fecha
-    const eventDate = lastEvent.a ? formatDate(lastEvent.a) : 'Fecha no disponible';
+    // Estado y ubicación actual
+    const currentStatus = translateStatus(latestStatus?.status) || 'En tránsito';
+    const currentLocation = latestEvent?.location || 'En tránsito';
+    const lastDescription = latestEvent?.description || 'Información no disponible';
     
-    const message = `📦 <b>Información del Paquete</b>
+    // Fecha estimada de entrega
+    const estimatedDelivery = timeMetrics?.estimated_delivery_date?.from || null;
+    const deliveryDate = estimatedDelivery ? formatDate(estimatedDelivery) : 'No disponible';
+    
+    // Formatear fecha del último evento
+    const lastEventDate = latestEvent?.time_iso ? formatDate(latestEvent.time_iso) : 'Fecha no disponible';
+    
+    // Crear el mensaje principal
+    let message = `📦 <b>Información del Paquete</b>
 
 🏢 <b>Paquetería:</b> ${carrierName}
 🔍 <b>Guía:</b> <code>${trackingNumber}</code>
 
-📍 <b>Estado actual:</b> ${lastEvent.z || 'En proceso'}
-🌍 <b>Ubicación:</b> ${lastEvent.c || 'En tránsito'}
-📅 <b>Fecha:</b> ${eventDate}
+📍 <b>Estado actual:</b> ${currentStatus}
+🌍 <b>Ubicación:</b> ${currentLocation}
+📅 <b>Último evento:</b> ${lastEventDate}
+📝 <b>Descripción:</b> ${lastDescription}
 
-${lastEvent.d ? `📝 <b>Detalles:</b> ${lastEvent.d}` : ''}
+🚚 <b>Entrega estimada:</b> ${deliveryDate}`;
 
-⏰ <i>Consultado: ${new Date().toLocaleString('es-MX', { 
-  timeZone: 'America/Mexico_City',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit'
-})}</i>`;
+    // Agregar información de contacto si está disponible
+    if (carrierPhone) {
+      message += `\n📞 <b>Contacto:</b> ${carrierPhone}`;
+    }
+    
+    // Agregar historial reciente (últimos 3-5 eventos)
+    if (events.length > 1) {
+      message += `\n\n📋 <b>Historial reciente:</b>`;
+      
+      const recentEvents = events.slice(0, Math.min(5, events.length));
+      
+      for (const event of recentEvents) {
+        const eventDate = event.time_iso ? formatDate(event.time_iso) : 'Fecha N/A';
+        const eventLocation = event.location || 'Ubicación N/A';
+        const eventDesc = event.description || 'Sin descripción';
+        
+        message += `\n\n• <b>${eventDate}</b>
+📍 ${eventLocation}
+📝 ${eventDesc}`;
+      }
+    }
+    
+    // Pie del mensaje
+    message += `\n\n⏰ <i>Consultado: ${new Date().toLocaleString('es-MX', { 
+      timeZone: 'America/Mexico_City',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })}</i>`;
 
     return { message };
     
@@ -357,12 +415,28 @@ Intenta nuevamente o contacta soporte.`
   }
 }
 
-// Obtener nombre de la paquetería
+// Función auxiliar para traducir estados
+function translateStatus(status) {
+  const statusMap = {
+    'InTransit': 'En tránsito',
+    'Delivered': 'Entregado',
+    'PickedUp': 'Recogido',
+    'OutForDelivery': 'En reparto',
+    'AvailableForPickup': 'Disponible para recoger',
+    'Exception': 'Incidencia',
+    'Returned': 'Devuelto'
+  };
+  
+  return statusMap[status] || status;
+}
+
+// Obtener nombre de la paquetería - LEGACY (mantenido por compatibilidad)
 function getCarrierName(carrierId) {
   const carriers = {
     2: 'DHL',
     7041: 'DHL Paket',
     100842: 'DHL Supply Chain APAC',
+    100001: 'DHL Express',
     100003: 'FedEx',
     // Agregar más según necesidad
   };
@@ -373,7 +447,7 @@ function getCarrierName(carrierId) {
 // Formatear fecha
 function formatDate(dateString) {
   try {
-    // 17Track devuelve fechas en formato: "2025-05-28 14:30"
+    // 17Track API v2.2 devuelve fechas en formato ISO: "2025-05-28T14:34:00+02:00"
     const date = new Date(dateString);
     
     if (isNaN(date.getTime())) {
@@ -393,7 +467,7 @@ function formatDate(dateString) {
   }
 }
 
-// Enviar mensaje a Telegram - CORREGIDO PARA HTML
+// Enviar mensaje a Telegram - HTML FORMATTING
 async function sendMessage(chatId, text, env) {
   const telegramApiUrl = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
   
@@ -406,7 +480,7 @@ async function sendMessage(chatId, text, env) {
       body: JSON.stringify({
         chat_id: chatId,
         text: text,
-        parse_mode: 'HTML',  // ← CAMBIADO DE MARKDOWN A HTML
+        parse_mode: 'HTML',  // HTML formatting para mejor compatibilidad
         disable_web_page_preview: true
       })
     });
