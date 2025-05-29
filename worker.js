@@ -114,27 +114,27 @@ async function handleTelegramUpdate(update, env, ctx) {
   }
 }
 
-// Comando /start
+// Comando /start - SIN NÚMEROS DE EJEMPLO
 async function handleStartCommand(chatId, userName, env) {
   const welcomeMessage = `👋 ¡Hola ${userName}!
 
 🚚 <b>Bot de Tracking de Paquetes</b>
 
-Puedo ayudarte a rastrear tus paquetes de DHL y otras paqueterías.
+Puedo ayudarte a rastrear tus paquetes de DHL, FedEx, UPS, Correos de México y otras paqueterías.
 
 <b>Comandos disponibles:</b>
 • /track NUMERO_GUIA - Rastrear un paquete
 • /help - Mostrar ayuda
 
 <b>Ejemplo:</b>
-<code>/track 5532417763</code>
+<code>/track [tu_numero_de_guia]</code>
 
 ¡Envíame un número de guía para comenzar! 📦`;
 
   await sendMessage(chatId, welcomeMessage, env);
 }
 
-// Comando /help
+// Comando /help - SIN NÚMEROS DE EJEMPLO
 async function handleHelpCommand(chatId, env) {
   const helpMessage = `🆘 <b>Ayuda - Bot de Tracking</b>
 
@@ -144,16 +144,19 @@ async function handleHelpCommand(chatId, env) {
 • <code>/help</code> - Mostrar esta ayuda
 
 <b>Formas de rastrear:</b>
-• <code>/track 5532417763</code>
-• Enviar solo el número: <code>5532417763</code>
+• <code>/track [numero_de_guia]</code>
+• Enviar solo el número directamente
 
 <b>Paqueterías soportadas:</b>
 • DHL Express
-• FedEx
+• FedEx  
 • UPS
+• Correos de México
 • Y muchas más...
 
-💡 <b>Tip:</b> Solo envía el número de guía y yo me encargo del resto.`;
+💡 <b>Tip:</b> Solo envía el número de guía y yo me encargo del resto.
+
+🔒 <b>Privacidad:</b> Tu información de tracking es privada y segura.`;
 
   await sendMessage(chatId, helpMessage, env);
 }
